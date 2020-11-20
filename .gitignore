@@ -2,6 +2,6 @@
 target/
 out/
 .git/
-
+classes/
 
 *.iml

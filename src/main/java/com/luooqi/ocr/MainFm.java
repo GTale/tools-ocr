@@ -6,10 +6,7 @@ import com.luooqi.ocr.controller.ProcessController;
 import com.luooqi.ocr.model.CaptureInfo;
 import com.luooqi.ocr.model.StageInfo;
 import com.luooqi.ocr.snap.ScreenCapture;
-import com.luooqi.ocr.utils.CommUtils;
-import com.luooqi.ocr.utils.GlobalKeyListener;
-import com.luooqi.ocr.utils.OcrUtils;
-import com.luooqi.ocr.utils.VoidDispatchService;
+import com.luooqi.ocr.utils.*;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -29,15 +26,13 @@ import javafx.stage.Stage;
 import org.jnativehook.GlobalScreen;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.AbstractExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -75,6 +70,7 @@ public class MainFm extends Application {
         screenCapture = new ScreenCapture(stage);
         processController = new ProcessController();
         initKeyHook();
+        createTray(stage);
 
 //        ToggleGroup segmentGrp = new ToggleGroup();
 //        ToggleButton resetBtn = CommUtils.createToggleButton(segmentGrp, "resetBtn", this::resetText, "重置");
@@ -91,9 +87,9 @@ public class MainFm extends Application {
                 CommUtils.createButton("snapBtn", MainFm::doSnap, "截图"),
                 CommUtils.createButton("openImageBtn", MainFm::recImage, "打开"),
                 CommUtils.createButton("copyBtn", this::copyText, "复制"),
-                CommUtils.createButton("pasteBtn", this::pasteText, "粘贴"),
-                CommUtils.createButton("clearBtn", this::clearText, "清空"),
-                CommUtils.createButton("wrapBtn", this::wrapText, "换行")
+                //CommUtils.createButton("pasteBtn", this::pasteText, "粘贴"),
+                CommUtils.createButton("clearBtn", this::clearText, "清空")
+                //CommUtils.createButton("wrapBtn", this::wrapText, "换行")
                 //CommUtils.SEPARATOR, resetBtn, segmentBtn
         );
         topBar.setId("topBar");
@@ -124,7 +120,58 @@ public class MainFm extends Application {
         CommUtils.initStage(primaryStage);
         mainScene = new Scene(root, 670, 470);
         stage.setScene(mainScene);
+        stage.setResizable(false);
         stage.show();
+    }
+
+    /**
+     * 创建托盘程序,awt
+     */
+    private void createTray(Stage stage) {
+
+        try {
+            // 阻止隐藏最后一个窗口后销毁进程
+            Platform.setImplicitExit(false);
+
+            // 要显示的菜单
+            PopupMenu         popupMenu = new PopupMenu();
+            java.awt.MenuItem openItem  = new java.awt.MenuItem("show");
+            java.awt.MenuItem quitItem  = new java.awt.MenuItem("quit");
+
+            SystemTray    tray     = SystemTray.getSystemTray();
+            BufferedImage image    = ImageIO.read(this.getClass().getClassLoader().getResourceAsStream("img/logo.png"));
+            TrayIcon      trayIcon = new TrayIcon(image, "toolOcr");
+            tray.add(trayIcon);
+            trayIcon.setImageAutoSize(true);
+            trayIcon.addMouseListener(new TrayListener(stage));
+
+            // 事件监听器
+            ActionListener acl = event -> {
+                java.awt.MenuItem item = (java.awt.MenuItem) event.getSource();
+
+                if (item.getLabel().equals("quit")) {
+                    SystemTray.getSystemTray().remove(trayIcon);
+                    Platform.exit();
+                    System.exit(0);
+                    return;
+                }
+
+                if (item.getLabel().equals("show")) {
+                    Platform.runLater(stage::show);
+                }
+            };
+
+            openItem.addActionListener(acl);
+            quitItem.addActionListener(acl);
+
+            popupMenu.add(openItem);
+            popupMenu.add(quitItem);
+
+            trayIcon.setPopupMenu(popupMenu);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void wrapText() {
@@ -180,7 +227,6 @@ public class MainFm extends Application {
         }
         stageInfo = new StageInfo(stage.getX(), stage.getY(),
                 stage.getWidth(), stage.getHeight(), stage.isFullScreen());
-        MainFm.stage.close();
         try {
             BufferedImage image = ImageIO.read(selectedFile);
             doOcr(image);

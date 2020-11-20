@@ -1,7 +1,7 @@
 ## 树洞 OCR 文字识别
 一款跨平台的 OCR 小工具
 
-下载地址：[百度网盘](https://pan.baidu.com/s/1gVVQ58fZ8ori-O7rWKpRPQ)  提取码：`m6d8`
+> 修改使用新版本的百度OCR接口，需要自己去utils\OcrUtils.java配置clientId和clientSecret
 
 > - `xxx-with-jre.xx` 是完整版，带运行环境；如果精简版不能正常工作，请下载完整版使用；
 > - 文字识别使用了各云平台开发的识别接口，因此需要联网才能正常使用；
