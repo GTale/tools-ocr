@@ -11,6 +11,10 @@
     -fx-background-image: url(/img/screenshot.png);
 }
 
+#text2AudioBtn{
+    -fx-background-image: url(/img/audio.png);
+}
+
 #openImageBtn{
     -fx-background-image: url(/img/add-image.png);
 }

@@ -27,7 +27,7 @@ public class ProcessController extends Stage {
         int circleSize = 75;
         progressIndicator.setMinWidth(circleSize);
         progressIndicator.setMinHeight(circleSize);
-        Label topLab = new Label("正在识别图片，请稍等.....");
+        Label topLab = new Label("正在处理中，请稍等.....");
         topLab.setFont(Font.font(18));
         vBox.setSpacing(10);
         vBox.setPadding(new Insets(20, 0, 20, 0));

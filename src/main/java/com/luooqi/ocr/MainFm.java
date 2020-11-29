@@ -58,12 +58,12 @@ public class MainFm extends Application {
         stage = primaryStage;
         stageInfo = new StageInfo();
         stage.xProperty().addListener((observable, oldValue, newValue) -> {
-            if (stage.getX() > 0){
+            if (stage.getX() > 0) {
                 stageInfo.setX(stage.getX());
             }
         });
         stage.yProperty().addListener((observable, oldValue, newValue) -> {
-            if (stage.getY() > 0){
+            if (stage.getY() > 0) {
                 stageInfo.setY(stage.getY());
             }
         });
@@ -88,7 +88,8 @@ public class MainFm extends Application {
                 CommUtils.createButton("openImageBtn", MainFm::recImage, "打开"),
                 CommUtils.createButton("copyBtn", this::copyText, "复制"),
                 //CommUtils.createButton("pasteBtn", this::pasteText, "粘贴"),
-                CommUtils.createButton("clearBtn", this::clearText, "清空")
+                CommUtils.createButton("clearBtn", this::clearText, "清空"),
+                CommUtils.createButton("text2AudioBtn", this::text2AudioBtn, "语音转换")
                 //CommUtils.createButton("wrapBtn", this::wrapText, "换行")
                 //CommUtils.SEPARATOR, resetBtn, segmentBtn
         );
@@ -134,13 +135,13 @@ public class MainFm extends Application {
             Platform.setImplicitExit(false);
 
             // 要显示的菜单
-            PopupMenu         popupMenu = new PopupMenu();
-            java.awt.MenuItem openItem  = new java.awt.MenuItem("show");
-            java.awt.MenuItem quitItem  = new java.awt.MenuItem("quit");
+            PopupMenu popupMenu = new PopupMenu();
+            java.awt.MenuItem openItem = new java.awt.MenuItem("show");
+            java.awt.MenuItem quitItem = new java.awt.MenuItem("quit");
 
-            SystemTray    tray     = SystemTray.getSystemTray();
-            BufferedImage image    = ImageIO.read(this.getClass().getClassLoader().getResourceAsStream("img/logo.png"));
-            TrayIcon      trayIcon = new TrayIcon(image, "toolOcr");
+            SystemTray tray = SystemTray.getSystemTray();
+            BufferedImage image = ImageIO.read(this.getClass().getClassLoader().getResourceAsStream("img/logo.png"));
+            TrayIcon trayIcon = new TrayIcon(image, "toolOcr");
             tray.add(trayIcon);
             trayIcon.setImageAutoSize(true);
             trayIcon.addMouseListener(new TrayListener(stage));
@@ -183,7 +184,22 @@ public class MainFm extends Application {
         GlobalScreen.unregisterNativeHook();
     }
 
-    private void clearText(){
+    private void text2AudioBtn() {
+        String text = textArea.getSelectedText();
+        if (StrUtil.isBlank(text)) {
+            text = textArea.getText();
+        }
+        if (StrUtil.isBlank(text)) {
+            Platform.runLater(() ->
+                    AlertUtils.showErrorAlert(stage, "消息内容为空,转换失败")
+            );
+        } else {
+            final String convertText = text;
+            Platform.runLater(() -> AudioUtils.text2Audio(stage, processController, convertText));
+        }
+    }
+
+    private void clearText() {
         textArea.setText("");
     }
 
@@ -197,12 +213,12 @@ public class MainFm extends Application {
                 + Clipboard.getSystemClipboard().getString());
     }
 
-    private void copyText(){
+    private void copyText() {
         String text = textArea.getSelectedText();
-        if (StrUtil.isBlank(text)){
+        if (StrUtil.isBlank(text)) {
             text = textArea.getText();
         }
-        if (StrUtil.isBlank(text)){
+        if (StrUtil.isBlank(text)) {
             return;
         }
         Map<DataFormat, Object> data = new HashMap<>();
@@ -239,14 +255,14 @@ public class MainFm extends Application {
         runLater(screenCapture::cancelSnap);
     }
 
-    public static void doOcr(BufferedImage image){
-        processController.setX(CaptureInfo.ScreenMinX + (CaptureInfo.ScreenWidth - 300)/2 );
+    public static void doOcr(BufferedImage image) {
+        processController.setX(CaptureInfo.ScreenMinX + (CaptureInfo.ScreenWidth - 300) / 2);
         processController.setY(250);
         processController.show();
-        Thread ocrThread = new Thread(()->{
+        Thread ocrThread = new Thread(() -> {
             byte[] bytes = CommUtils.imageToBytes(image);
             String text = OcrUtils.ocrImg(bytes);
-            Platform.runLater(()-> {
+            Platform.runLater(() -> {
                 processController.close();
                 textArea.setText(text);
                 restore(true);
@@ -264,16 +280,15 @@ public class MainFm extends Application {
         stage.setY(stageInfo.getY());
         stage.setWidth(stageInfo.getWidth());
         stage.setHeight(stageInfo.getHeight());
-        if (focus){
+        if (focus) {
             stage.setOpacity(1.0f);
             stage.requestFocus();
-        }
-        else{
+        } else {
             stage.setOpacity(0.0f);
         }
     }
 
-    private static void initKeyHook(){
+    private static void initKeyHook() {
         try {
             Logger logger = Logger.getLogger(GlobalScreen.class.getPackage().getName());
             logger.setLevel(Level.WARNING);
@@ -281,8 +296,7 @@ public class MainFm extends Application {
             GlobalScreen.setEventDispatcher(new VoidDispatchService());
             GlobalScreen.registerNativeHook();
             GlobalScreen.addNativeKeyListener(new GlobalKeyListener());
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             ex.printStackTrace();
         }
     }
