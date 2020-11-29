@@ -4,10 +4,12 @@ import cn.hutool.core.io.StreamProgress;
 import cn.hutool.http.HttpUtil;
 import com.luooqi.ocr.controller.ProcessController;
 import com.luooqi.ocr.model.CaptureInfo;
+import javafx.application.Platform;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
+import java.net.URLEncoder;
 
 public class AudioUtils {
     /*
@@ -26,33 +28,48 @@ public class AudioUtils {
      *   aue	选填	3为mp3格式(默认)； 4为pcm-16k；5为pcm-8k；6为wav（内容同pcm-16k）; 注意aue=4或者6是语音识别要求的格式，但是音频内容不是语音识别要求的自然人发音，所以识别效果会受影响。
      * */
     public static void text2Audio(Stage stage, ProcessController processController, String text) {
-        String fileUrl = "https://tts.baidu.com/text2audio?cuid=baike&lan=ZH&ctp=1&pdt=301&vol=9&spd=5&per=5118&tex=" + text;
-        FileChooser fileChooser = new FileChooser();
-        FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("MP3 files (*.mp3)", "*.mp3");
-        fileChooser.getExtensionFilters().add(extFilter);
-        File target = fileChooser.showSaveDialog(stage);
-        if (target == null) {
-            AlertUtils.showErrorAlert(stage, "文件名不能为空");
-        } else {
-            HttpUtil.downloadFile(fileUrl, target, new StreamProgress() {
-                @Override
-                public void start() {
-                    processController.setX(CaptureInfo.ScreenMinX + (CaptureInfo.ScreenWidth - 300) / 2);
-                    processController.setY(250);
-                    processController.show();
-                }
+        try {
+            String fileUrl = "https://tts.baidu.com/text2audio?ie=UTF-8&cuid=baike&lan=ZH&ctp=1&pdt=301&vol=9&spd=5&per=5118&text="
+                    + URLEncoder.encode(URLEncoder.encode(text, "utf-8"), "utf-8");
+            FileChooser fileChooser = new FileChooser();
+            FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("MP3 files (*.mp3)", "*.mp3");
+            fileChooser.getExtensionFilters().add(extFilter);
+            File target = fileChooser.showSaveDialog(stage);
+            //System.out.println(fileUrl);
+            if (target == null) {
+                AlertUtils.showErrorAlert(stage, "文件名不能为空");
+            } else {
+                processController.setX(CaptureInfo.ScreenMinX + (CaptureInfo.ScreenWidth - 300) / 2);
+                processController.setY(250);
+                processController.show();
 
-                @Override
-                public void progress(long progressSize) {
-                    //Console.log("已下载：{}", FileUtil.readableFileSize(progressSize));
-                }
+                Thread downloadThread = new Thread(() ->
+                        HttpUtil.downloadFile(fileUrl, target, new StreamProgress() {
+                            @Override
+                            public void start() {
+                                //Todo nothing
+                            }
 
-                @Override
-                public void finish() {
-                    processController.close();
-                    AlertUtils.showInfoAlert(stage, "下载完成");
-                }
-            });
+                            @Override
+                            public void progress(long progressSize) {
+                                //Todo nothing
+                            }
+
+                            @Override
+                            public void finish() {
+                                Platform.runLater(() -> {
+                                    processController.close();
+                                    AlertUtils.showInfoAlert(stage, "下载完成");
+                                });
+                            }
+                        })
+                );
+                downloadThread.setDaemon(false);
+                downloadThread.start();
+            }
+        } catch (Exception e) {
+            AlertUtils.showErrorAlert(stage, "内部错误");
         }
+
     }
 }

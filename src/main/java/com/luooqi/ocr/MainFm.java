@@ -190,12 +190,9 @@ public class MainFm extends Application {
             text = textArea.getText();
         }
         if (StrUtil.isBlank(text)) {
-            Platform.runLater(() ->
-                    AlertUtils.showErrorAlert(stage, "消息内容为空,转换失败")
-            );
+            AlertUtils.showErrorAlert(stage, "消息内容为空,转换失败");
         } else {
-            final String convertText = text;
-            Platform.runLater(() -> AudioUtils.text2Audio(stage, processController, convertText));
+            AudioUtils.text2Audio(stage, processController, text);
         }
     }
 
