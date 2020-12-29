@@ -4,6 +4,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.log.StaticLog;
 import com.luooqi.ocr.controller.ProcessController;
 import com.luooqi.ocr.model.CaptureInfo;
+import com.luooqi.ocr.model.Speaker;
 import com.luooqi.ocr.model.StageInfo;
 import com.luooqi.ocr.snap.ScreenCapture;
 import com.luooqi.ocr.utils.*;
@@ -35,6 +36,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static javafx.application.Platform.runLater;
 
@@ -50,6 +53,8 @@ public class MainFm extends Application {
     private static ScreenCapture screenCapture;
     private static ProcessController processController;
     private static TextArea textArea;
+    private Integer audioSpeaker = 0;
+    private Integer speakRate = 5;
     //private static boolean isSegment = true;
     //private static String ocrText = "";
 
@@ -89,7 +94,13 @@ public class MainFm extends Application {
                 CommUtils.createButton("copyBtn", this::copyText, "复制"),
                 //CommUtils.createButton("pasteBtn", this::pasteText, "粘贴"),
                 CommUtils.createButton("clearBtn", this::clearText, "清空"),
-                CommUtils.createButton("text2AudioBtn", this::text2AudioBtn, "语音转换")
+                CommUtils.createButton("text2AudioBtn", this::text2AudioBtn, "语音转换"),
+                CommUtils.createChoiceBox(Speaker.getNames(), ((observable, oldValue, newValue) ->
+                        audioSpeaker = Speaker.getValue(newValue)
+                ),0,"语音库"),
+                CommUtils.createChoiceBox(Stream.iterate(1,item->item+1).limit(15).map(v->v+"").collect(Collectors.toList()), ((observable, oldValue, newValue) ->
+                        speakRate = newValue.intValue() + 1
+                ),4,"播放速度")
                 //CommUtils.createButton("wrapBtn", this::wrapText, "换行")
                 //CommUtils.SEPARATOR, resetBtn, segmentBtn
         );
@@ -189,10 +200,12 @@ public class MainFm extends Application {
         if (StrUtil.isBlank(text)) {
             text = textArea.getText();
         }
-        if (StrUtil.isBlank(text)) {
-            AlertUtils.showErrorAlert(stage, "消息内容为空,转换失败");
+        if (StrUtil.length(text) >= 2048) {
+            AlertUtils.showErrorAlert(stage, "文本内容太长!");
+        } else if (StrUtil.isBlank(text)) {
+            AlertUtils.showErrorAlert(stage, "文本内容不能为空!");
         } else {
-            AudioUtils.text2Audio(stage, processController, text);
+            AudioUtils.text2Audio(stage, audioSpeaker, speakRate, processController, text);
         }
     }
 

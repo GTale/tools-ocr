@@ -1,5 +1,6 @@
 package com.luooqi.ocr.utils;
 
+import cn.hutool.Hutool;
 import cn.hutool.core.util.CharUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpRequest;
@@ -7,7 +8,10 @@ import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.log.StaticLog;
 import com.luooqi.ocr.MainFm;
+import com.luooqi.ocr.model.Speaker;
 import com.luooqi.ocr.model.TextBlock;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Rectangle2D;
@@ -54,6 +58,7 @@ public class CommUtils {
     public static final String STYLE_TRANSPARENT = "-fx-background-color: transparent;";
     public static final String SPECIAL_CHARS = "[\\s`~!@#$%^&*()_\\-+=|{}':;,\\[\\].<>/?！￥…（）【】‘；：”“’。，、？]+";
     public static boolean IS_MAC_OS = false;
+
     static {
         String osName = System.getProperty("os.name", "generic").toLowerCase();
         if ((osName.contains("mac")) || (osName.contains("darwin"))) {
@@ -105,7 +110,7 @@ public class CommUtils {
                 maxX = textBlock.getTopRight().x;
                 maxBlock = textBlock;
             }
-            if (Math.abs(textBlock.getAngle()) > maxAngle){
+            if (Math.abs(textBlock.getAngle()) > maxAngle) {
                 maxAngle = Math.abs(textBlock.getAngle());
             }
             if (lastY == -1) {
@@ -123,7 +128,7 @@ public class CommUtils {
             lineBlock.add(textBlock);
         }
 
-        if (maxAngle >= 0.05){
+        if (maxAngle >= 0.05) {
             //todo 文本倾斜校正
         }
 
@@ -141,23 +146,21 @@ public class CommUtils {
                 if (maxX - lastBlock.getTopRight().x >= CHAR_WIDTH * 2 ||
                         !NORMAL_CHAR.matcher(endTxt).find() ||
                         (NORMAL_CHAR.matcher(endTxt).find() &&
-                        (firstBlock.getTopLeft().x - minX) > CHAR_WIDTH * 2)){
+                                (firstBlock.getTopLeft().x - minX) > CHAR_WIDTH * 2)) {
                     sb.append("\n");
                     for (int i = 0, ln = (firstBlock.getTopLeft().x - minX) / CHAR_WIDTH; i < ln; i++) {
-                        if (i % 2 == 0){
+                        if (i % 2 == 0) {
                             sb.append("    ");
                         }
                     }
-                }
-                else{
-                    if (CharUtil.isLetterOrNumber(endTxt.charAt(0)) && CharUtil.isLetterOrNumber(firstBlock.getText().charAt(0))){
+                } else {
+                    if (CharUtil.isLetterOrNumber(endTxt.charAt(0)) && CharUtil.isLetterOrNumber(firstBlock.getText().charAt(0))) {
                         sb.append(" ");
                     }
                 }
-            }
-            else{
+            } else {
                 for (int i = 0, ln = (firstBlock.getTopLeft().x - minX) / CHAR_WIDTH; i < ln; i++) {
-                    if (i % 2 == 0){
+                    if (i % 2 == 0) {
                         sb.append("    ");
                     }
                 }
@@ -221,7 +224,7 @@ public class CommUtils {
         return resultBytes;
     }
 
-    public static Button createButton(String id, Runnable action, String toolTip){
+    public static Button createButton(String id, Runnable action, String toolTip) {
         return createButton(id, BUTTON_SIZE, action, toolTip);
     }
 
@@ -231,7 +234,16 @@ public class CommUtils {
         return button;
     }
 
-    public static ToggleButton createToggleButton(ToggleGroup grp, String id, Runnable action, String toolTip){
+    public static ChoiceBox<String> createChoiceBox(List<String> speaker, ChangeListener<Number> listener, int initIndex, String toolTip) {
+        ChoiceBox<String> box = new ChoiceBox<>();
+        box.getItems().addAll(speaker);
+        box.getSelectionModel().select(initIndex);
+        box.setTooltip(new Tooltip(toolTip));
+        box.getSelectionModel().selectedIndexProperty().addListener(listener);
+        return box;
+    }
+
+    public static ToggleButton createToggleButton(ToggleGroup grp, String id, Runnable action, String toolTip) {
         return createToggleButton(grp, id, BUTTON_SIZE, action, toolTip);
     }
 
@@ -275,21 +287,21 @@ public class CommUtils {
 
     private static final Pattern SCALE_PATTERN = Pattern.compile("renderScale:([\\d.]+)");
 
-    public static Rectangle getDisplayScreen(Stage stage){
+    public static Rectangle getDisplayScreen(Stage stage) {
         Screen crtScreen = getCrtScreen(stage);
         Rectangle2D rectangle2D = crtScreen.getBounds();
-        return new Rectangle((int)rectangle2D.getMinX (), (int)rectangle2D.getMinY(),
-                (int)rectangle2D.getWidth(),
-                (int)rectangle2D.getHeight());
+        return new Rectangle((int) rectangle2D.getMinX(), (int) rectangle2D.getMinY(),
+                (int) rectangle2D.getWidth(),
+                (int) rectangle2D.getHeight());
     }
 
-    public static float getScale(Stage stage){
+    public static float getScale(Stage stage) {
         Screen crtScreen = getCrtScreen(stage);
         float scale = 1.0f;
         assert crtScreen != null;
         String str = crtScreen.toString();
         Matcher matcher = SCALE_PATTERN.matcher(str);
-        if (matcher.find()){
+        if (matcher.find()) {
             scale = Float.parseFloat(matcher.group(1));
         }
         return scale;

@@ -64,7 +64,7 @@ public class OcrUtils {
         }
         JSONArray jsonArray = jsonObject.getJSONArray("words_result");
         if(type == BdType.BASIC) {
-            return  jsonArray.stream().map(v -> ((JSONObject) v).getStr("words")).collect(Collectors.joining());
+            return  jsonArray.stream().map(v -> ((JSONObject) v).getStr("words").trim() + "\n").collect(Collectors.joining());
         }else{
             return  CommUtils.combineTextBlocks(jsonArray.stream().map(v -> {
                 JSONObject jObj = (JSONObject)v;
