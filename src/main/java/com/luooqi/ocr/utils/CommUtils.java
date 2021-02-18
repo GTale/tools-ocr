@@ -1,6 +1,5 @@
 package com.luooqi.ocr.utils;
 
-import cn.hutool.Hutool;
 import cn.hutool.core.util.CharUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpRequest;
@@ -8,15 +7,15 @@ import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.log.StaticLog;
 import com.luooqi.ocr.MainFm;
-import com.luooqi.ocr.model.Speaker;
 import com.luooqi.ocr.model.TextBlock;
 import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
+import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.control.Button;
 import javafx.scene.control.*;
+import javafx.scene.control.Label;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
@@ -32,6 +31,8 @@ import javax.imageio.ImageWriter;
 import javax.imageio.stream.MemoryCacheImageOutputStream;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -222,6 +223,16 @@ public class CommUtils {
             offset += arr.length;
         }
         return resultBytes;
+    }
+
+    public static Label createLabel(String text, Runnable action) {
+        Label label = new Label();
+        label.setText(text);
+        label.setAlignment(Pos.CENTER);
+        if(action != null){
+            label.setOnMouseClicked(event -> action.run());
+        }
+        return label;
     }
 
     public static Button createButton(String id, Runnable action, String toolTip) {

@@ -3,7 +3,6 @@ package com.luooqi.ocr;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.log.StaticLog;
 import com.luooqi.ocr.controller.ProcessController;
-import com.luooqi.ocr.model.CaptureInfo;
 import com.luooqi.ocr.model.Speaker;
 import com.luooqi.ocr.model.StageInfo;
 import com.luooqi.ocr.snap.ScreenCapture;
@@ -12,6 +11,7 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
@@ -23,6 +23,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontPosture;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.jnativehook.GlobalScreen;
 
@@ -43,10 +44,6 @@ import static javafx.application.Platform.runLater;
 
 public class MainFm extends Application {
 
-    public static void main(String[] args) {
-        launch(args);
-    }
-
     private static StageInfo stageInfo;
     public static Stage stage;
     private static Scene mainScene;
@@ -55,8 +52,10 @@ public class MainFm extends Application {
     private static TextArea textArea;
     private Integer audioSpeaker = 0;
     private Integer speakRate = 5;
-    //private static boolean isSegment = true;
-    //private static String ocrText = "";
+
+    public static void main(String[] args) {
+        launch(args);
+    }
 
     @Override
     public void start(Stage primaryStage) {
@@ -73,37 +72,33 @@ public class MainFm extends Application {
             }
         });
         screenCapture = new ScreenCapture(stage);
+
+        // 创建进度指示器
         processController = new ProcessController();
+        processController.initModality(Modality.APPLICATION_MODAL);
+        processController.setWidth(300);
+        processController.setHeight(150);
+
+
+        // 初始化全局快捷键
         initKeyHook();
+        // 创建托盘
         createTray(stage);
 
-//        ToggleGroup segmentGrp = new ToggleGroup();
-//        ToggleButton resetBtn = CommUtils.createToggleButton(segmentGrp, "resetBtn", this::resetText, "重置");
-//        ToggleButton segmentBtn = CommUtils.createToggleButton(segmentGrp, "segmentBtn", this::segmentText, "智能分段");
-//        resetBtn.setUserData("resetBtn");
-//        segmentBtn.setUserData("segmentBtn");
-//
-//        segmentGrp.selectToggle(segmentBtn);
-//        segmentGrp.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
-//            isSegment = newValue.getUserData().toString().equals("segmentBtn");
-//        });
-
         HBox topBar = new HBox(
+                CommUtils.createButton("settingBtn", MainFm::setting, "设置"),
                 CommUtils.createButton("snapBtn", MainFm::doSnap, "截图"),
                 CommUtils.createButton("openImageBtn", MainFm::recImage, "打开"),
                 CommUtils.createButton("copyBtn", this::copyText, "复制"),
-                //CommUtils.createButton("pasteBtn", this::pasteText, "粘贴"),
                 CommUtils.createButton("clearBtn", this::clearText, "清空"),
                 CommUtils.createButton("text2AudioBtn", this::text2AudioBtn, "语音转换"),
-                CommUtils.createChoiceBox(Speaker.getNames(), ((observable, oldValue, newValue) ->
-                        audioSpeaker = Speaker.getValue(newValue)
-                ),0,"语音库"),
-                CommUtils.createChoiceBox(Stream.iterate(1,item->item+1).limit(15).map(v->v+"").collect(Collectors.toList()), ((observable, oldValue, newValue) ->
-                        speakRate = newValue.intValue() + 1
-                ),4,"播放速度")
-                //CommUtils.createButton("wrapBtn", this::wrapText, "换行")
-                //CommUtils.SEPARATOR, resetBtn, segmentBtn
+                CommUtils.createLabel("语音:", null),
+                CommUtils.createChoiceBox(Speaker.getNames(), ((observable, oldValue, newValue) -> audioSpeaker = Speaker.getValue(newValue)), 0, "语音库"),
+                CommUtils.createLabel("音量:", null),
+                CommUtils.createChoiceBox(Stream.iterate(1, item -> item + 1).limit(15).map(v -> v + "")
+                        .collect(Collectors.toList()), ((observable, oldValue, newValue) -> speakRate = newValue.intValue() + 1), 4, "播放速度")
         );
+        topBar.setAlignment(Pos.CENTER_LEFT);
         topBar.setId("topBar");
         topBar.setMinHeight(40);
         topBar.setSpacing(8);
@@ -195,32 +190,14 @@ public class MainFm extends Application {
         GlobalScreen.unregisterNativeHook();
     }
 
-    private void text2AudioBtn() {
-        String text = textArea.getSelectedText();
-        if (StrUtil.isBlank(text)) {
-            text = textArea.getText();
-        }
-        if (StrUtil.length(text) >= 2048) {
-            AlertUtils.showErrorAlert(stage, "文本内容太长!");
-        } else if (StrUtil.isBlank(text)) {
-            AlertUtils.showErrorAlert(stage, "文本内容不能为空!");
-        } else {
-            AudioUtils.text2Audio(stage, audioSpeaker, speakRate, processController, text);
-        }
+    private static void setting(){
+        Stage settingStage = new Stage();
+        VBox vBox = new VBox();
+        //vBox.getChildren().add();
     }
 
     private void clearText() {
         textArea.setText("");
-    }
-
-    private void pasteText() {
-        String text = Clipboard.getSystemClipboard().getString();
-        if (StrUtil.isBlank(text)) {
-            return;
-        }
-        textArea.setText(textArea.getText()
-                + (StrUtil.isBlank(textArea.getText()) ? "" : "\n")
-                + Clipboard.getSystemClipboard().getString());
     }
 
     private void copyText() {
@@ -266,8 +243,7 @@ public class MainFm extends Application {
     }
 
     public static void doOcr(BufferedImage image) {
-        processController.setX(CaptureInfo.ScreenMinX + (CaptureInfo.ScreenWidth - 300) / 2);
-        processController.setY(250);
+        ResetPositionUtils.show(stage, processController);
         processController.show();
         Thread ocrThread = new Thread(() -> {
             byte[] bytes = CommUtils.imageToBytes(image);
@@ -280,6 +256,18 @@ public class MainFm extends Application {
         });
         ocrThread.setDaemon(false);
         ocrThread.start();
+    }
+
+    private void text2AudioBtn() {
+        String text = textArea.getSelectedText();
+        if (StrUtil.isBlank(text)) {
+            text = textArea.getText();
+        }
+        if (StrUtil.isBlank(text)) {
+            AlertUtils.showErrorAlert(stage, "文本内容不能为空!");
+        } else {
+            AudioUtils.text2Audio(stage, audioSpeaker, speakRate, processController, text);
+        }
     }
 
     public static void restore(boolean focus) {

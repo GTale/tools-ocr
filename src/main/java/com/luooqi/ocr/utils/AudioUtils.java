@@ -1,9 +1,8 @@
 package com.luooqi.ocr.utils;
 
 import cn.hutool.core.io.IoUtil;
-import cn.hutool.core.io.StreamProgress;
+import cn.hutool.core.util.StrUtil;
 import com.luooqi.ocr.controller.ProcessController;
-import com.luooqi.ocr.model.CaptureInfo;
 import javafx.application.Platform;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
@@ -17,6 +16,9 @@ import java.net.URL;
 import java.net.URLEncoder;
 
 public class AudioUtils {
+
+    private static String ffmpeg = "C:\\Users\\sys\\Desktop\\下载工具\\Bat脚本\\音频提取\\ffmpeg\\bin\\ffmpeg.exe";
+
     /*
      *   百度旧版语音的文档已经找不到了，下面是新版的文档。
      *
@@ -33,7 +35,7 @@ public class AudioUtils {
      *   per   （精品音库）	选填	度逍遥（精品）=5003，度小鹿=5118，度博文=106，度小童=110，度小萌=111，度米朵=103，度小娇=5
      *   aue	选填	3为mp3格式(默认)； 4为pcm-16k；5为pcm-8k；6为wav（内容同pcm-16k）; 注意aue=4或者6是语音识别要求的格式，但是音频内容不是语音识别要求的自然人发音，所以识别效果会受影响。
      * */
-    public static void text2Audio(Stage stage,Integer audioSpeaker, Integer speakRate, ProcessController processController, String text) {
+    public static void text2Audio(Stage stage, Integer audioSpeaker, Integer speakRate, ProcessController processController, String text) {
         try {
             FileChooser fileChooser = new FileChooser();
             FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("MP3 files (*.mp3)", "*.mp3");
@@ -42,85 +44,111 @@ public class AudioUtils {
             if (target == null) {
                 AlertUtils.showErrorAlert(stage, "文件名不能为空");
             } else {
-                processController.setX(CaptureInfo.ScreenMinX + (CaptureInfo.ScreenWidth - 300) / 2);
-                processController.setY(250);
+                ResetPositionUtils.show(stage, processController);
                 processController.show();
-
                 Thread downloadThread = new Thread(() -> {
-                    HttpURLConnection connection = null;
-                    InputStream inputStream = null;
-                    FileOutputStream targetOutputStream = null;
-                    try {
-                        String fileUrl = "https://tts.baidu.com/text2audio";
-                        String postData = "ie=UTF-8&cuid=baike&spd=" + speakRate + "&pdt=301&per=" + audioSpeaker + "&lan=ZH&ctp=1&vol=15&rate=192&tex="
-                                + URLEncoder.encode(URLEncoder.encode(text, "utf-8"), "utf-8");
-                        URL url = new URL(fileUrl);
-                        connection = (HttpURLConnection) url.openConnection();
-                        connection.setRequestMethod("POST");
-                        connection.setDoOutput(true);
-                        connection.setDoInput(true);
-                        connection.setConnectTimeout(3000);
-                        connection.setUseCaches(false);
-                        connection.setRequestProperty("Content-type", "application/x-www-form-urlencoded");
-                        connection.setRequestProperty("accept", "*/*");
-                        connection.setRequestProperty("connection", "Keep-Alive");
-                        connection.setRequestProperty("user-agent","Mozilla/5.0 (compatible; MSIE 6.0; Windows NT 5.1;SV1)");
-                        connection.connect();
-                        // output data
-                        OutputStreamWriter outputStream = new OutputStreamWriter(connection.getOutputStream(),"utf-8");
-                        outputStream.write(postData);
-                        outputStream.flush();
-                        outputStream.close();
-                        // download file
-                        int responseCode = connection.getResponseCode();
-                        if (100 < responseCode && responseCode < 300) {
-                            targetOutputStream = new FileOutputStream(target);
-                            inputStream = connection.getInputStream();
-                            IoUtil.copyByNIO(connection.getInputStream(), targetOutputStream, 4096, new StreamProgress() {
-                                @Override
-                                public void start() {
-                                    //Todo nothing
-                                }
+                    String concat = "";
+                    String targetName = target.getAbsolutePath();
+                    int length = StrUtil.length(text);
+                    boolean flag = false;
+                    String javaTmp = System.getProperty("java.io.tmpdir");
 
-                                @Override
-                                public void progress(long progressSize) {
-                                    //Todo nothing
-                                }
+                    // 字节长度判断
+                    if (length >= 2048) {
+                        // 分段获取
+                        int phrases = length >> 11;
+                        for (int i = 0; i <= phrases; i++) {
+                            int endPos = (i + 1) << 11;
+                            String tmpFilename = javaTmp + "\\th_tmp_" + i + ".mp3";
+                            concat = String.join(i == 0 ? "" : "|", concat, tmpFilename);
+                            flag = requestData(speakRate, audioSpeaker, text.substring(i << 11, endPos > length ? length : endPos), tmpFilename);
+                        }
 
-                                @Override
-                                public void finish() {
-                                    Platform.runLater(() -> {
-                                        processController.close();
-                                        AlertUtils.showInfoAlert(stage, "下载完成");
-                                    });
-                                }
-                            });
-                        }else{
-                            Platform.runLater(() -> {
-                                processController.close();
-                                AlertUtils.showErrorAlert(stage, "下载失败");
-                            });
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    } finally {
-                        if (targetOutputStream != null) {
-                            IoUtil.close(targetOutputStream);
-                        }
-                        if (inputStream != null) {
-                            IoUtil.close(inputStream);
-                        }
-                        if (connection != null) {
-                            connection.disconnect();
-                        }
+                        // 重组音频
+                        assemble(concat, targetName);
+                    } else {
+                        flag = requestData(speakRate, audioSpeaker, text, targetName);
+                    }
+
+                    if (flag) {
+                        Platform.runLater(() -> {
+                            processController.close();
+                            AlertUtils.showInfoAlert(stage, "下载完成");
+                        });
+                    } else {
+                        Platform.runLater(() -> {
+                            processController.close();
+                            AlertUtils.showErrorAlert(stage, "下载失败");
+                        });
                     }
                 });
+
                 downloadThread.setDaemon(false);
                 downloadThread.start();
             }
         } catch (Exception e) {
             AlertUtils.showErrorAlert(stage, "内部错误");
         }
+    }
 
+    private static Boolean requestData(int speakRate, int audioSpeaker, String text, String filename) {
+        HttpURLConnection connection = null;
+        InputStream inputStream = null;
+        FileOutputStream targetOutputStream = null;
+        try {
+
+            String fileUrl = "https://tts.baidu.com/text2audio";
+            String postData = "ie=UTF-8&cuid=baike&spd=" + speakRate + "&pdt=301&per=" + audioSpeaker + "&lan=ZH&ctp=1&vol=15&rate=192&tex="
+                    + URLEncoder.encode(URLEncoder.encode(text, "utf-8"), "utf-8");
+            URL url = new URL(fileUrl);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
+            connection.setDoInput(true);
+            connection.setConnectTimeout(3000);
+            connection.setUseCaches(false);
+            connection.setRequestProperty("Content-type", "application/x-www-form-urlencoded");
+            connection.setRequestProperty("accept", "*/*");
+            connection.setRequestProperty("connection", "Keep-Alive");
+            connection.setRequestProperty("user-agent", "Mozilla/5.0 (compatible; MSIE 6.0; Windows NT 5.1;SV1)");
+            connection.connect();
+            // output data
+            OutputStreamWriter outputStream = new OutputStreamWriter(connection.getOutputStream(), "utf-8");
+            outputStream.write(postData);
+            outputStream.flush();
+            outputStream.close();
+            // download file
+            int responseCode = connection.getResponseCode();
+            if (100 < responseCode && responseCode < 300) {
+                targetOutputStream = new FileOutputStream(filename);
+                inputStream = connection.getInputStream();
+                IoUtil.copyByNIO(connection.getInputStream(), targetOutputStream, 4096, null);
+                return true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (targetOutputStream != null) {
+                IoUtil.close(targetOutputStream);
+            }
+            if (inputStream != null) {
+                IoUtil.close(inputStream);
+            }
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+        return false;
+    }
+
+
+    private static void assemble(String assemble, String targetName) {
+        try {
+            String cmd = ffmpeg + "-y -i \"concat:" + assemble + "\" -acodec copy " + targetName;
+            Process process = Runtime.getRuntime().exec(cmd);
+            process.waitFor();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

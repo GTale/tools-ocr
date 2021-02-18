@@ -83,10 +83,10 @@ public class AlertUtils {
 
     private static void show(Stage primaryStage, Alert alert, boolean shouldWait, Supplier success, Supplier error) {
         Stage stage = (Stage) alert.getDialogPane().getScene().getWindow();
-        ResetPositionUtils.moveOut(stage, -10000, -10000);
+        ResetPositionUtils.hidden(stage, -10000, -10000);
         stage.show();
         stage.hide();
-        ResetPositionUtils.reset(primaryStage, stage);
+        ResetPositionUtils.show(primaryStage, stage);
         stage.show();
         if (shouldWait) {
             alert.resultProperty().addListener(listener -> {
