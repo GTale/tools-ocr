@@ -1,12 +1,18 @@
 ## 树洞 OCR 文字识别
 一款跨平台的 OCR 小工具
 
-> 修改使用新版本的百度OCR接口，需要自己去utils\OcrUtils.java配置clientId和clientSecret
+> 修改使用新版本的百度OCR接口，需要先配置ocr_api的key和secret。若需要转换语音,则需要下载ffmpeg并设置路径
 
-> - `xxx-with-jre.xx` 是完整版，带运行环境；如果精简版不能正常工作，请下载完整版使用；
-> - 文字识别使用了各云平台开发的识别接口，因此需要联网才能正常使用；
+> - 文字识别使用了百度语音平台开发的识别接口，因此需要联网才能正常使用；
 > - **安装路径请勿包含中文字符**；
-> - 本程序使用 JavaFX 开发，使用前请务必安装 **Java8** 运行环境（完整版无需安装 Java8）。
+> - 本程序使用 JavaFX 开发，使用前请务必安装 **Java8** 运行环境。
+
+> 改版后的程序
+
+![程序](https://ftp.bmp.ovh/imgs/2021/03/275403079629550a.png)
+
+
+> 原版程序
 
 ![截图](http://img.ifish.fun/FqzQ_arDyqsYOXcRoFNQ_Hezyoqo)
 
