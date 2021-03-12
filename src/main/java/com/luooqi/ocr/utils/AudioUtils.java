@@ -17,8 +17,6 @@ import java.net.URLEncoder;
 
 public class AudioUtils {
 
-    private static String ffmpeg = "C:\\Users\\sys\\Desktop\\下载工具\\Bat脚本\\音频提取\\ffmpeg\\bin\\ffmpeg.exe";
-
     /*
      *   百度旧版语音的文档已经找不到了，下面是新版的文档。
      *
@@ -37,6 +35,12 @@ public class AudioUtils {
      * */
     public static void text2Audio(Stage stage, Integer audioSpeaker, Integer speakRate, ProcessController processController, String text) {
         try {
+            String ffmpeg = PrefsSingleton.get().get("ffmpeg", "");
+            if (StrUtil.isBlank(ffmpeg)) {
+                AlertUtils.showErrorAlert(stage, "请先配置ffmpeg路径");
+                return;
+            }
+
             FileChooser fileChooser = new FileChooser();
             FileChooser.ExtensionFilter extFilter = new FileChooser.ExtensionFilter("MP3 files (*.mp3)", "*.mp3");
             fileChooser.getExtensionFilters().add(extFilter);
@@ -59,13 +63,13 @@ public class AudioUtils {
                         int phrases = length >> 11;
                         for (int i = 0; i <= phrases; i++) {
                             int endPos = (i + 1) << 11;
-                            String tmpFilename = javaTmp + "\\th_tmp_" + i + ".mp3";
+                            String tmpFilename = javaTmp + "\\ocr_tmp_" + i + ".mp3";
                             concat = String.join(i == 0 ? "" : "|", concat, tmpFilename);
                             flag = requestData(speakRate, audioSpeaker, text.substring(i << 11, endPos > length ? length : endPos), tmpFilename);
                         }
 
                         // 重组音频
-                        assemble(concat, targetName);
+                        assemble(ffmpeg, concat, targetName);
                     } else {
                         flag = requestData(speakRate, audioSpeaker, text, targetName);
                     }
@@ -142,9 +146,9 @@ public class AudioUtils {
     }
 
 
-    private static void assemble(String assemble, String targetName) {
+    private static void assemble(String ffmpegPath, String assemble, String targetName) {
         try {
-            String cmd = ffmpeg + "-y -i \"concat:" + assemble + "\" -acodec copy " + targetName;
+            String cmd = ffmpegPath + "\\ffmpeg -y -i \"concat:" + assemble + "\" -acodec copy " + targetName;
             Process process = Runtime.getRuntime().exec(cmd);
             process.waitFor();
         } catch (Exception e) {

@@ -8,6 +8,7 @@ import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.luooqi.ocr.model.TextBlock;
+import javafx.application.Platform;
 
 import java.awt.*;
 import java.util.stream.Collectors;
@@ -19,28 +20,24 @@ import java.util.stream.Collectors;
  */
 public class OcrUtils {
 
-    // 百度Ocr的API
-    private static String clientId = "";
-    private static String clientSecret = "";
-
     private enum BdType {
         BASIC,
         BASIC_LOCATION
     }
 
-    public static String ocrImg(byte[] imgData) {
-        return bdGeneralOcr(imgData);
+    public static String ocrImg(byte[] imgData, String clientId, String clientSecret) {
+        return bdGeneralOcr(imgData, clientId, clientSecret);
     }
 
-    private static String bdGeneralOcr(byte[] imgData) {
-        return bdBaseOcr(imgData, BdType.BASIC);
+    private static String bdGeneralOcr(byte[] imgData, String clientId, String clientSecret) {
+        return bdBaseOcr(imgData, BdType.BASIC, clientId, clientSecret);
     }
 
-    private static String bdAccurateOcr(byte[] imgData) {
-        return bdBaseOcr(imgData, BdType.BASIC_LOCATION);
+    private static String bdAccurateOcr(byte[] imgData, String clientId, String clientSecret) {
+        return bdBaseOcr(imgData, BdType.BASIC_LOCATION, clientId, clientSecret);
     }
 
-    private static String bdBaseOcr(byte[] imgData, BdType type) {
+    private static String bdBaseOcr(byte[] imgData, BdType type, String clientId, String clientSecret) {
         //Grant Token
         String grantTokenUrl = "https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=" + clientId + "&client_secret=" + clientSecret;
         HttpResponse tokenResponse = WebUtils.get(grantTokenUrl);
@@ -51,10 +48,10 @@ public class OcrUtils {
         String baiDuOcrUrl = "https://aip.baidubce.com/rest/2.0/ocr/v1/" + (type == BdType.BASIC ? "general_basic" : "general") + "?access_token=" + token;
         String baseImgData = "image=" + URLUtil.encodeQuery(Base64.encode(imgData));
         HttpResponse response = WebUtils.postRaw(baiDuOcrUrl, baseImgData);
-        return extractBdResult(WebUtils.getSafeHtml(response),type);
+        return extractBdResult(WebUtils.getSafeHtml(response), type);
     }
 
-    private static String extractBdResult(String html,BdType type) {
+    private static String extractBdResult(String html, BdType type) {
         if (StrUtil.isBlank(html)) {
             return "";
         }
@@ -63,11 +60,11 @@ public class OcrUtils {
             return "";
         }
         JSONArray jsonArray = jsonObject.getJSONArray("words_result");
-        if(type == BdType.BASIC) {
-            return  jsonArray.stream().map(v -> ((JSONObject) v).getStr("words").trim() + "\n").collect(Collectors.joining());
-        }else{
-            return  CommUtils.combineTextBlocks(jsonArray.stream().map(v -> {
-                JSONObject jObj = (JSONObject)v;
+        if (type == BdType.BASIC) {
+            return jsonArray.stream().map(v -> ((JSONObject) v).getStr("words").trim() + "\n").collect(Collectors.joining());
+        } else {
+            return CommUtils.combineTextBlocks(jsonArray.stream().map(v -> {
+                JSONObject jObj = (JSONObject) v;
                 TextBlock textBlock = new TextBlock();
                 textBlock.setText(jObj.getStr("words").trim() + "\n");
                 JSONObject location = jObj.getJSONObject("location");

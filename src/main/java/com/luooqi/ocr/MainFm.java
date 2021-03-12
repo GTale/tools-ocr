@@ -3,6 +3,7 @@ package com.luooqi.ocr;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.log.StaticLog;
 import com.luooqi.ocr.controller.ProcessController;
+import com.luooqi.ocr.controller.SettingController;
 import com.luooqi.ocr.model.Speaker;
 import com.luooqi.ocr.model.StageInfo;
 import com.luooqi.ocr.snap.ScreenCapture;
@@ -49,6 +50,7 @@ public class MainFm extends Application {
     private static Scene mainScene;
     private static ScreenCapture screenCapture;
     private static ProcessController processController;
+    private static SettingController settingController;
     private static TextArea textArea;
     private Integer audioSpeaker = 0;
     private Integer speakRate = 5;
@@ -79,6 +81,10 @@ public class MainFm extends Application {
         processController.setWidth(300);
         processController.setHeight(150);
 
+        settingController = new SettingController();
+        settingController.setWidth(300);
+        settingController.setHeight(200);
+        settingController.initModality(Modality.APPLICATION_MODAL);
 
         // 初始化全局快捷键
         initKeyHook();
@@ -86,7 +92,10 @@ public class MainFm extends Application {
         createTray(stage);
 
         HBox topBar = new HBox(
-                CommUtils.createButton("settingBtn", MainFm::setting, "设置"),
+                CommUtils.createButton("settingBtn", () -> {
+                    ResetPositionUtils.show(stage, settingController);
+                    settingController.show();
+                }, "设置"),
                 CommUtils.createButton("snapBtn", MainFm::doSnap, "截图"),
                 CommUtils.createButton("openImageBtn", MainFm::recImage, "打开"),
                 CommUtils.createButton("copyBtn", this::copyText, "复制"),
@@ -190,11 +199,9 @@ public class MainFm extends Application {
         GlobalScreen.unregisterNativeHook();
     }
 
-    private static void setting(){
-        Stage settingStage = new Stage();
-        VBox vBox = new VBox();
-        //vBox.getChildren().add();
-    }
+//    private static void setting() {
+//        settingController.show();
+//    }
 
     private void clearText() {
         textArea.setText("");
@@ -243,11 +250,22 @@ public class MainFm extends Application {
     }
 
     public static void doOcr(BufferedImage image) {
+        String clientId = PrefsSingleton.get().get("ocr_key", "");
+        String clientSecret = PrefsSingleton.get().get("ocr_secret", "");
+
+        if (StrUtil.isBlank(clientId) || StrUtil.isBlank(clientSecret)) {
+            Platform.runLater(() -> {
+                AlertUtils.showErrorAlert(stage, "请先配置百度OCR密钥");
+                restore(true);
+            });
+            return;
+        }
+
         ResetPositionUtils.show(stage, processController);
         processController.show();
         Thread ocrThread = new Thread(() -> {
             byte[] bytes = CommUtils.imageToBytes(image);
-            String text = OcrUtils.ocrImg(bytes);
+            String text = OcrUtils.ocrImg(bytes, clientId, clientSecret);
             Platform.runLater(() -> {
                 processController.close();
                 textArea.setText(text);
